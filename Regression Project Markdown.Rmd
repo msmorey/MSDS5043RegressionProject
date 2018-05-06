@@ -1,0 +1,48 @@
+---
+title: "Regression Project"
+author: "Pat Ballard, Brent Lodge, Sean Morey"
+date: "Spring 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# Do not modify this chunk!
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(GGally)
+library(scales)
+library(readr)
+library(Hmisc)
+library(purrr)
+library(tidyr)
+library(gclus)
+library(corrplot)
+library(PerformanceAnalytics)
+library(psych)
+```
+
+### Part 1: Importing and Examining Data
+&nbsp;
+
+#### 1.1 Importing Data
+
+```{r 1.1}
+pairs.panels(comm_prop, scale=TRUE, ci =T, stars = T)
+```
+#### 1.2 Examining Variable Distribution
+
+```{r 1.1}
+pairs.panels(comm_prop, scale=TRUE, ci =T, stars = T)
+```
+This plot gives a number of different observations; RentRate *appears* to be a relatively normal distribution, while all others appear skewed in some way. Age has a gap between 5 and 10 years, possibly indicating some sort of recession where building came to a halt. SqFt and Taxes are skewed identically to the right. While W2MiDT is not a continuous variable, there are more buildings in this sample outside of 2 miles than within, posibbly indicating some sort of urban sprawl in this city.
+
+&nbsp;
+
+#### 1.2 Add to existing data frame
+
+```{r 1.2, results='asis'}
+temp.diff.df <- [Enter your code here]
+# Do not modify the following code:
+knitr::kable(temp.diff.df, format = "markdown")
+```
