@@ -1,0 +1,37 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(scales)
+library(readr)
+library(Hmisc)
+library(purrr)
+library(tidyr)
+library(gclus)
+library(corrplot)
+library(PerformanceAnalytics)
+```
+
+```{r}
+comm_prop <- read_csv("comm_prop.csv")
+summary(comm_prop)
+
+```
+
+```{r}
+M <- cor(comm_prop)
+corrplot.mixed(M, upper = "color")
+```
+
+```{r}
+chart.Correlation(comm_prop, histogram = TRUE)
+```
+
