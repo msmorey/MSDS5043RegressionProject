@@ -23,26 +23,87 @@ library(psych)
 ```
 
 ### Part 1: Importing and Examining Data
-&nbsp;
 
 #### 1.1 Importing Data
 
 ```{r 1.1}
-pairs.panels(comm_prop, scale=TRUE, ci =T, stars = T)
+comm_prop <- read_csv("comm_prop.csv")
+comm_prop$W2MiDT <- factor(comm_prop$W2MiDT)
+summary(comm_prop)
+attach(comm_prop)
 ```
 #### 1.2 Examining Variable Distribution
 
-```{r 1.1}
+```{r 1.2}
 pairs.panels(comm_prop, scale=TRUE, ci =T, stars = T)
 ```
+&nbsp;
+
 This plot gives a number of different observations; RentRate *appears* to be a relatively normal distribution, while all others appear skewed in some way. Age has a gap between 5 and 10 years, possibly indicating some sort of recession where building came to a halt. SqFt and Taxes are skewed identically to the right. While W2MiDT is not a continuous variable, there are more buildings in this sample outside of 2 miles than within, posibbly indicating some sort of urban sprawl in this city.
 
 &nbsp;
 
-#### 1.2 Add to existing data frame
+#### 1.3 Examining Correlations
 
-```{r 1.2, results='asis'}
-temp.diff.df <- [Enter your code here]
-# Do not modify the following code:
-knitr::kable(temp.diff.df, format = "markdown")
+```{r 1.3}
+M <- cor(comm_prop[1:6])
+M
+pairs(M, main="Simple Scatterplot Matrix", pch = 16)
+corrplot.mixed(M, upper = "color")
+
+```
+&nbsp;
+
+Using these plots along with the "pairs.panels" plot from 1.2, we can see that correlations for *continuous* variables are pretty widely varied. The VacRate variable does not correlate well with any other variable (besides a slight negative correlation with OperExp). SqFt and Taxes are perfectly correlated, and they both have a .58 correlation with RentRate (the highest among continuous variables). OperExp has a .5 correlation to RentRate. Age has a small negative correlation, but looking at the scatter plot there may be a way to split that data into factors or ignore some of it to get a stronger correlation.
+
+&nbsp;
+
+### Part 2: Making a Model
+
+#### 2.1: Undertand the Data
+Using the info from the previous sections we can see there are no missing values. The histograms from 1.2 show that Age has a severe split; lets look at that one specifically:
+
+``` {r 2.1}
+hist(Age)
+```
+
+&nspb;
+
+Since our building is 9 years old, the cost of rent will correlate more strongly with the group of buildings aged over 10 years. We decided to fit a model with all variables included first, but after fitting a decent model we plan to exclude buildings <10 years old.
+
+&nspb;
+
+#### 2.2: Fit a Model
+
+``` {r 2.1.1}
+fit1 <- lm(comm_prop)
+summary(fit1)
+```
+
+``` {r 2.1.2}
+fit2 <- lm(RentRate~Age+OperExp+SqFt+W2MiDT)
+summary(fit2)
+```
+
+``` {r 2.1.3}
+comm_prop_age9 <- subset(comm_prop, Age>9)
+detach(comm_prop)
+attach(comm_prop_age9)
+summary(comm_prop_age9)
+str(comm_prop_age9)
+```
+
+``` {r 2.1.4}
+fit3 <- lm(comm_prop_age9)
+summary(fit3)
+```
+
+``` {r 2.1.5}
+fit4 <- lm(RentRate~OperExp+W2MiDT)
+summary(fit4)
+```
+
+``` {r 2.1.6}
+fit5 <- lm(RentRate~OperExp+W2MiDT+SqFt+VacRate)
+summary(fit5)
 ```
