@@ -74,18 +74,20 @@ Since our building is 9 years old, the cost of rent will correlate more strongly
 &nspb;
 
 #### 2.2: Fit a Model
+&nspb
 
-``` {r 2.1.1}
+
+``` {r 2.2.1}
 fit1 <- lm(comm_prop)
 summary(fit1)
 ```
 
-``` {r 2.1.2}
+``` {r 2.2.2}
 fit2 <- lm(RentRate~Age+OperExp+SqFt+W2MiDT)
 summary(fit2)
 ```
 
-``` {r 2.1.3}
+``` {r 2.2.3}
 comm_prop_age9 <- subset(comm_prop, Age>9)
 detach(comm_prop)
 attach(comm_prop_age9)
@@ -93,17 +95,32 @@ summary(comm_prop_age9)
 str(comm_prop_age9)
 ```
 
-``` {r 2.1.4}
+``` {r 2.2.4}
 fit3 <- lm(comm_prop_age9)
 summary(fit3)
 ```
 
-``` {r 2.1.5}
+``` {r 2.2.5}
 fit4 <- lm(RentRate~OperExp+W2MiDT)
 summary(fit4)
 ```
 
-``` {r 2.1.6}
+``` {r 2.2.6}
 fit5 <- lm(RentRate~OperExp+W2MiDT+SqFt+VacRate)
 summary(fit5)
+```
+
+``` {r 2.2.7}
+test.row <- data.frame(Age = 9, OperExp = 13, VacRate = 0, SqFt = 40000, Taxes = .540, W2MiDT = as.factor(0))
+predict(fit5, newdata = test.row, interval = "predict")
+
+
+library(leaps)
+subsets <- regsubsets(RentRate ~ .*.*., data = comm_prop_age9)
+
+plot(subsets, scale = "adjr2")
+```
+
+``` {r 2.2.7}
+lm(RentRate ~ )
 ```
