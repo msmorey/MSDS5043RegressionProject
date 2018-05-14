@@ -20,6 +20,7 @@ library(gclus)
 library(corrplot)
 library(PerformanceAnalytics)
 library(psych)
+library(car)
 ```
 
 ### Part 1: Importing and Examining Data
@@ -28,14 +29,14 @@ library(psych)
 
 ```{r 1.1}
 comm_prop <- read_csv("comm_prop.csv")
-comm_prop$W2MiDT <- factor(comm_prop$W2MiDT)
+comm_prop$W2MiDT <- factor(comm_prop$W2MiDT, levels = c(0, 1), labels = c("No","Yes"))
 summary(comm_prop)
 attach(comm_prop)
 ```
 #### 1.2 Examining Variable Distribution
 
 ```{r 1.2}
-pairs.panels(comm_prop, scale=TRUE, ci =T, stars = T)
+pairs.panels(comm_prop[,c(1:6)], scale=TRUE, ci =T, stars = T)
 ```
 &nbsp;
 
@@ -46,9 +47,9 @@ This plot gives a number of different observations; RentRate *appears* to be a r
 #### 1.3 Examining Correlations
 
 ```{r 1.3}
-M <- cor(comm_prop[1:6])
+M <- cor(comm_prop[,c(1:6)])
 M
-pairs(M, main="Simple Scatterplot Matrix", pch = 16)
+pairs(comm_prop[,1:6], main="Simple Scatterplot Matrix", pch = 16)
 corrplot.mixed(M, upper = "color")
 
 ```
@@ -67,60 +68,137 @@ Using the info from the previous sections we can see there are no missing values
 hist(Age)
 ```
 
-&nspb;
+&nbsp;
 
-Since our building is 9 years old, the cost of rent will correlate more strongly with the group of buildings aged over 10 years. We decided to fit a model with all variables included first, but after fitting a decent model we plan to exclude buildings <10 years old.
+Since our building is 9 years old, the cost of rent will correlate more strongly with the group of buildings aged 9 years and older. We decided to fit a model with all variables included first, but after fitting a decent model we plan to exclude buildings <= 9 years old.
 
-&nspb;
+&nbsp;
 
-#### 2.2: Fit a Model
-&nspb
-
+### 3: Fit a Model
+#### 3.1: Determine variables and data manipulations
+&nbsp;
+We ran a model on the entire data frame just to see some basic data.
+&nbsp;
 
 ``` {r 2.2.1}
 fit1 <- lm(comm_prop)
 summary(fit1)
 ```
+&nbsp;
+Looking at the model, it seems evident that Age and W2MiDT have very small P-values. We already knew from the correlation matrix that SqFt and W2MiDT have a strong multicollinearity; lets run a VIF test to confirm.
 
 ``` {r 2.2.2}
+mc <- vif(fit1)
+summary(fit1)
+mc
+
+```
+
+
+&nbsp;
+Now that we have confirmed the multicollinearity of SqFt and Taxes, we will remove Taxes (to avoid the multicollinearity) and VacRate (due to insignificant p-value). Our F-statistic is 45.61 and the adjusted R-squared = 0.73. We will compare our other models to these statistics.
+&nbsp;
+
+``` {r 2.2.3}
 fit2 <- lm(RentRate~Age+OperExp+SqFt+W2MiDT)
 summary(fit2)
 ```
+&nbsp
+This fit seems to be much more useful; while our adjusted R-squared stayed largely the same, our F-statistic rose by 23 points. Now lets create a subset of our data using only buildings 9 years of age or older.
+&nbsp
 
-``` {r 2.2.3}
+``` {r 2.2.4}
 comm_prop_age9 <- subset(comm_prop, Age>9)
+attach(comm_prop)
 detach(comm_prop)
 attach(comm_prop_age9)
 summary(comm_prop_age9)
 str(comm_prop_age9)
 ```
-
-``` {r 2.2.4}
-fit3 <- lm(comm_prop_age9)
-summary(fit3)
-```
-
-``` {r 2.2.5}
-fit4 <- lm(RentRate~OperExp+W2MiDT)
-summary(fit4)
-```
+&nbsp;
+Our new data frame has 45 observations. Lets fit a model using the variables we decided on in our previous fit.
+&nbsp
 
 ``` {r 2.2.6}
-fit5 <- lm(RentRate~OperExp+W2MiDT+SqFt+VacRate)
+fit4 <- lm(RentRate~OperExp+SqFt+W2MiDT)
+summary(fit4)
+```
+&nbsp;
+This fit is better based on R-squared, but not by much. Additionally our F-Statistic dropped some. Our group examined the data and thought that VacRate may still be useful in our regression. Additionally, we thought that W2MiDT and SqFt would be interesting to use as interacting variables. Our thought process was that buildings with large square footage that were *also* downtown would be more desirable than buildings with large square footage that were *not* downtown.
+&nbsp;
+
+``` {r 2.2.7}
+fit5 <- lm(RentRate~OperExp+W2MiDT*SqFt+VacRate)
 summary(fit5)
 ```
+&nbsp;
+Success! Our adjusted R-squared value rose to a 0.87 and our F-statistic gained back 10 points. The p-value is the smallest R will support. This is the model we chose to proceed with. Lets proceed with some tests to verify normality and constant variance.
+&nbsp;
 
-``` {r 2.2.7}
-test.row <- data.frame(Age = 9, OperExp = 13, VacRate = 0, SqFt = 40000, Taxes = .540, W2MiDT = as.factor(0))
-predict(fit5, newdata = test.row, interval = "predict")
+#### Section 3.2: Test the resulting model
 
+``` {r 2.2.8}
+fit5.df <- fortify(fit5)
+ggplot(fit5.df, aes(x= .fitted, y= .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = 2) +
+  labs(x = "Fitted Values", y = "Residuals")
 
+ncvTest(fit5)
+
+shapiro.test(fit5$residuals)
+
+leveragePlots(fit5, pch = 16)
+```
+
+&nbsp;
+The residuals appear to have random distribution.  The leverage plots appear *largely* normal. There may be a few outliers but none appear to be leveraging our model too badly. The ncv test shows an insignificant p-value, indicating that we do *not* reject the null hypothesis that the error variance is constant. The shapiro test has high W and p-values indicating that we found no significant departure from normality. 
+
+&nbsp;
+Our coefficients, t-values, and p-values for each variable are as follows;
+
+``` {r 2.2.9}
+summary(fit5)
+qf(p = 0.05, df1 = 1, df2 = 43)
+summary(aov(comm_prop_age9$RentRate ~ comm_prop_age9$W2MiDT))
+```
+
+Given our qf function gave us a target F-value of 0.004 and Anova produced an F-value of 33.11, we conclude (with 95% confidence) that the mean rent rate of buildings within 2 miles of downtown and buildings *not* within 2 miles of downtown differ. We believe that the adjusted R-Squared value of 0.87 is more than high enough to be confident in our predictive tests. The data set provided was relatively useful, but we would have liked to see several more variables. For one, the W2MiDT variable could have been better as a continuous numeric value in miles. We would have also liked to have variables for the number of floors in a building, the amount of parking available, and some way to indicate available ammenities like gas lines, internet, pools and community areas.
+
+### Extra Credit
+
+#### Backwards Stepwise Regression
+
+``` {r Extra Credit 1}
+library(MASS)
+stepAIC(lm(RentRate~Age+W2MiDT+SqFt+OperExp+VacRate), direction = 'backward')
+fit6 <- lm(formula = RentRate ~ W2MiDT + SqFt + OperExp + VacRate)
+summary(fit6)
+```
+&nbsp;
+This function might be more valuable if we were to use second order terms. As is, the F-statistic and adjusted R-squared value are lower than our original function, so we elect not to use backwards stepwise regression. We were asked to go through formal tests for residuals and variance in this model, but I (Sean) did not have time to do that for all our models, so my decision to move forward with fit5 is based soley on R-squared and F-statistic.
+&nbsp;
+
+#### Best Subsets
+``` {r Extra Credit 2}
 library(leaps)
-subsets <- regsubsets(RentRate ~ .*.*., data = comm_prop_age9)
-
-plot(subsets, scale = "adjr2")
+subsets <- regsubsets(RentRate~Age+SqFt+OperExp+W2MiDT+VacRate, data = comm_prop_age9)
+plot(subsets, scale="adjr2")
+fit7 <- lm(RentRate~SqFt+OperExp+W2MiDT+VacRate, data = comm_prop_age9)
+summary(fit7)
 ```
+&nbsp;
+Conveniently, this method produced the SAME MODEL as backwards stepwise regression did. We can reject this model for the same reasons as we did fit6. We will proceed with fit5!
+&nbsp;
 
-``` {r 2.2.7}
-lm(RentRate ~ )
+### Section 4: Apply the model
+&nbsp;
+We run our model using the predict function. Our building is 9 years old, has $13k in operating expenses, has had no vacancy, is 40000 sq. ft., has $540 in taxes, and is *not* within 2 miles of downtown. 
+&nbsp;
+
+``` {r 2.2.10}
+test.row <- data.frame(Age = 9, OperExp = 13, VacRate = 0, SqFt = 40000, Taxes = .540, W2MiDT = as.factor("No"))
+predict(fit5, newdata = test.row, interval = "predict")
 ```
+&nbsp;
+Our prediction is that we can rent our building for $15,350 with $13,480 being the lower bound and $17,220 being the upper bound (at a 95% confidence interval). Since our operating expenses are at $13k (which is below our confidence interval) we can say with 95% confidence that renting our building will *at least* cover our expenses. We should keep the building and rent it.
